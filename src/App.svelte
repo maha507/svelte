@@ -1,117 +1,51 @@
 <script>
-  let applicants = [    { names: ['task 8', 'task 7', 'task 3'] },
-    { names: ['task 3', 'task 5'] },
-    { names: ['Task 6', 'Task 1', 'Task 2'] }
-  ];
+  let cvFile = null;
+  let fullname = "";
+  let email = "";
+  let mobile = "";
 
-  let hoveringOverApplicant = null;
-
-  function dragStart(event, applicantIndex, nameIndex) {
-    const data = { applicantIndex, nameIndex };
-    event.dataTransfer.setData('text/plain', JSON.stringify(data));
+  function handleFileChange(event) {
+    cvFile = event.target.files[0];
   }
 
-  function drop(event, applicantIndex, nameIndex = null) {
-    event.preventDefault();
-    const json = event.dataTransfer.getData('text/plain');
-    const data = JSON.parse(json);
+  async function uploadCV() {
+    if (cvFile) {
+      const base64Data = await toBase64(cvFile);
+      const postData = {
+        cv: base64Data,
+        fullname: fullname,
+        email: email,
+        mobile: mobile
+      };
 
-    if (nameIndex !== null) {
-      // Reordering names within the same applicant
-      const [name] = applicants[data.applicantIndex].names.splice(data.nameIndex, 1);
-      applicants[applicantIndex].names.splice(nameIndex, 0, name);
-    } else {
-      // Moving name to a different applicant
-      const [name] = applicants[data.applicantIndex].names.splice(data.nameIndex, 1);
-      applicants[applicantIndex].names.push(name);
+      const response = await fetch('https://api.recruitly.io/api/cvsubmit/bytes?apiKey=TEST45684CB2A93F41FC40869DC739BD4D126D77', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(postData)
+      });
+
+      // Handle the response as needed
     }
-
-    hoveringOverApplicant = null;
-    applicants = [...applicants]; // Make a copy to trigger reactivity
   }
 
-  function deleteName(applicantIndex, nameIndex) {
-    applicants[applicantIndex].names.splice(nameIndex, 1);
-    applicants = [...applicants]; // Make a copy to trigger reactivity
-  }
-
-  function editName(applicantIndex, nameIndex, newName) {
-    applicants[applicantIndex].names[nameIndex] = newName;
-    applicants = [...applicants]; // Make a copy to trigger reactivity
-  }
-
-  function addName(applicantIndex) {
-    const newName = prompt('Enter a new name:');
-    if (newName) {
-      applicants[applicantIndex].names.push(newName);
-      applicants = [...applicants]; // Make a copy to trigger reactivity
-    }
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
+    });
   }
 </script>
 
-<div class="applicants">
-  {#each applicants as applicant, i}
-    <div
-      class="applicant"
-      on:dragover={(event) => {
-        event.preventDefault();
-        hoveringOverApplicant = i;
-      }}
-      on:drop={(event) => drop(event, i, null)}
-      on:dragleave={() => hoveringOverApplicant = null}
-      style="background-color: {i === hoveringOverApplicant ? 'lightgray' : 'white'};"
-    >
-      <h2>Tasks in Stage {i + 1} <button on:click={() => addName(i)}>Add task</button></h2>
-      <ul>
-        {#each applicant.names as name, j}
-          <li
-            class="name"
-            draggable="true"
-            on:dragstart={(event) => dragStart(event, i, j)}
-            on:dragover={(event) => {
-              event.preventDefault();
-              hoveringOverApplicant = i;
-            }}
-            on:drop={(event) => drop(event, i, j)}
-          >
-            <div style="display: flex; align-items: center;">
-              <span>{name}</span>
-              <div style="margin-left: 10px;">
-                <button on:click={() => deleteName(i, j)}>Delete</button>
-                <button on:click={() => editName(i, j, prompt('Enter a new name:'))}>Edit</button>
-              </div>
-            </div>
-          </li>
-        {/each}
-      </ul>
-  </div>
-  {/each}
-</div>
+<main>
+  <h1>Upload CV</h1>
+  <input type="file" accept=".pdf,.doc,.docx" on:change={handleFileChange} />
+  <input type="text" placeholder="Full Name" bind:value="{fullname}" />
+  <input type="email" placeholder="Email" bind:value="{email}" />
+  <input type="tel" placeholder="Mobile" bind:value="{mobile}" />
 
-<style>
-  .applicants {
-      
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .applicant {
-     
-    width: 400px;
-    padding: 20px;
-    border: 1px solid black;
-    margin: 10px;
-  }
-
-  .name {
-    background-color: aquamarine;
-    cursor: move;
-    margin: 5px;
-    padding: 5px;
-    border: 1px solid black;
-    display: flex;
-    justify-content: space-between;
-  }
-</style>
-
-
+  <button on:click={uploadCV}>Upload</button>
+</main>
